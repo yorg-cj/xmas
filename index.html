@@ -119,6 +119,7 @@
       background: #fff;
       touch-action: none;
       box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+      position: relative; /* for SVG overlay */
     }
 
     body.festive #grid {
@@ -130,65 +131,91 @@
       display: flex;
     }
 
+    /* SVG overlay to draw connecting lines between selected letters */
+    #pathOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Base cell – no visible gridlines, letter in a "slot" */
     .cell {
       width: 3rem;
       height: 3rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #ccc;
+      border: 1px solid transparent; /* removes grid look */
       font-weight: 700;
       font-size: 1.4rem;
       cursor: pointer;
       user-select: none;
       box-sizing: border-box;
-      transition: background-color 0.12s, transform 0.08s, box-shadow 0.12s, border-radius 0.12s;
-      background: rgba(255,255,255,0.95);
+      position: relative;      /* for the circle (::before) */
+      background: transparent; /* background handled by circle */
+      color: inherit;
+      z-index: 1;              /* above the circle */
     }
 
-    body.festive .cell {
-      border-color: #55605d;
-      background: rgba(12, 22, 22, 0.95);
-      color: #f2f2f2;
-    }
-
-    .cell.selected {
-      background: #d7e7ff;
-      transform: scale(1.04);
-    }
-
-    body.festive .cell.selected {
-      background: #203c5a;
+    /* Circle "token" behind the letter */
+    .cell::before {
+      content: "";
+      position: absolute;
+      width: 2.3rem;
+      height: 2.3rem;
+      border-radius: 50%;
+      background: transparent;
+      transition: background-color 0.12s, transform 0.08s, box-shadow 0.12s;
+      z-index: 0;
     }
 
     /* ornament hover (only on non-found cells) */
     @media (hover: hover) {
-      .cell:not(.found-theme):not(.found-spanagram):hover {
-        border-radius: 999px;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+      .cell:not(.found-theme):not(.found-spanagram):hover::before {
+        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        transform: scale(1.05);
         background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9), #d7e7ff);
-        transform: translateY(-2px) scale(1.05);
       }
 
-      body.festive .cell:not(.found-theme):not(.found-spanagram):hover {
+      body.festive .cell:not(.found-theme):not(.found-spanagram):hover::before {
         background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.8), #203c5a);
       }
     }
 
+    /* Selected path (current selection) – light blue circle */
+    .cell.selected::before {
+      background: #d7e7ff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
     /* CHRISTMAS colors for found words --------------------------------- */
+    .cell.found-theme::before {
+      background: #0F8F2F;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    }
+
     .cell.found-theme {
-      background: #0F8F2F !important;
       color: white;
+    }
+
+    .cell.found-spanagram::before {
+      background: #D93030;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
     }
 
     .cell.found-spanagram {
-      background: #D93030 !important;
       color: white;
     }
 
-    .cell.found-theme.selected,
-    .cell.found-spanagram.selected {
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.5) inset;
+    .cell.found-theme.selected::before,
+    .cell.found-spanagram.selected::before {
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.7) inset,
+        0 2px 6px rgba(0,0,0,0.35);
+    }
+
+    body.festive .cell {
+      color: #f2f2f2;
     }
 
     #sidebar {
@@ -408,404 +435,453 @@
   </div>
 
   <script>
-  // --- DATA -----------------------------------------------------------------
-  const gridLetters = [
-    ['E','G','I','F','S','A','M','A','P'],
-    ['P','G','N','O','P','T','R','O','C'],
-    ['T','Y','R','N','A','C','R','K','I'],
-    ['S','I','A','L','N','O','E','T','Y'],
-    ['C','O','Z','Y','G','I','C','A','Y'],
-    ['S','N','O','W','E','T','A','W','T'],
-    ['H','O','S','T','O','E','J','A','R'],
-    ['T','L','A','G','N','N','U','F','Y'],
-    ['E','T','R','I','N','I','R','B','E'],
-  ];
+    // --- DATA -----------------------------------------------------------------
+    const gridLetters = [
+      ['E','G','I','F','S','A','M','A','P'],
+      ['P','G','N','O','P','T','R','O','C'],
+      ['T','Y','R','N','A','C','R','K','I'],
+      ['S','I','A','L','N','O','E','T','Y'],
+      ['C','O','Z','Y','G','I','C','A','Y'],
+      ['S','N','O','W','E','T','A','W','T'],
+      ['H','O','S','T','O','E','J','A','R'],
+      ['T','L','A','G','N','N','U','F','Y'],
+      ['E','T','R','I','N','I','R','B','E'],
+    ];
 
-  const spanagram = {
-    id: 'SPANAGRAM',
-    label: 'COZY GETAWAY',
-    path: [
-      [4,0],[4,1],[4,2],[4,3],[4,4],
-      [5,4],[5,5],[5,6],[5,7],[4,7],[4,8],
-    ],
-  };
+    const spanagram = {
+      id: 'SPANAGRAM',
+      label: 'COZY GETAWAY',
+      path: [
+        [4,0],[4,1],[4,2],[4,3],[4,4],
+        [5,4],[5,5],[5,6],[5,7],[4,7],[4,8],
+      ],
+    };
 
-  const themeWords = [
-    { id: 'MASON',     label: 'Mason',     path: [ [0,6],[0,5],[0,4],[1,3],[1,2] ] },
-    { id: 'HOTEL',     label: 'Hotel',     path: [ [6,0],[6,1],[7,0],[8,0],[7,1] ] },
-    { id: 'CONCERT',   label: 'Concert',   path: [ [4,6],[3,5],[3,4],[2,5],[3,6],[2,6],[1,5] ] },
-    { id: 'PARK_CITY', label: 'Park City', path: [ [0,8],[0,7],[1,6],[2,7],[1,8],[2,8],[3,7],[3,8] ] },
-    { id: 'EGYPTIAN',  label: 'Egyptian',  path: [ [0,0],[1,1],[2,1],[1,0],[2,0],[3,1],[3,2],[2,3] ] },
-    { id: 'FEBRUARY',  label: 'February',  path: [ [7,7],[8,8],[8,7],[8,6],[7,6],[6,7],[6,8],[7,8] ] },
-    { id: 'JENNINGS',  label: 'Jennings',  path: [ [6,6],[6,5],[7,5],[7,4],[8,5],[8,4],[7,3],[6,2] ] },
-  ];
+    const themeWords = [
+      { id: 'MASON',     label: 'Mason',     path: [ [0,6],[0,5],[0,4],[1,3],[1,2] ] },
+      { id: 'HOTEL',     label: 'Hotel',     path: [ [6,0],[6,1],[7,0],[8,0],[7,1] ] },
+      { id: 'CONCERT',   label: 'Concert',   path: [ [4,6],[3,5],[3,4],[2,5],[3,6],[2,6],[1,5] ] },
+      { id: 'PARK_CITY', label: 'Park City', path: [ [0,8],[0,7],[1,6],[2,7],[1,8],[2,8],[3,7],[3,8] ] },
+      { id: 'EGYPTIAN',  label: 'Egyptian',  path: [ [0,0],[1,1],[2,1],[1,0],[2,0],[3,1],[3,2],[2,3] ] },
+      { id: 'FEBRUARY',  label: 'February',  path: [ [7,7],[8,8],[8,7],[8,6],[7,6],[6,7],[6,8],[7,8] ] },
+      { id: 'JENNINGS',  label: 'Jennings',  path: [ [6,6],[6,5],[7,5],[7,4],[8,5],[8,4],[7,3],[6,2] ] },
+    ];
 
-  // --- STATE / ELEMENTS -----------------------------------------------------
-  const gridEl = document.getElementById('grid');
+    // --- STATE / ELEMENTS -----------------------------------------------------
+    const gridEl = document.getElementById('grid');
 
-  // --- Strongly disable double-tap zoom INSIDE the grid (especially iOS) ----
-  gridEl.addEventListener(
-    'touchstart',
-    function (e) {
-      // We don't need any native touch behavior (scroll/zoom) inside the grid,
-      // only our pointer-based selection logic, so we block the default.
-      if (e.touches.length === 1) {
-        e.preventDefault();  // kills double-tap zoom & touch gestures in grid
+    // --- Strongly disable double-tap zoom INSIDE the grid (especially iOS) ----
+    gridEl.addEventListener(
+      'touchstart',
+      function (e) {
+        // We don't need any native touch behavior (scroll/zoom) inside the grid,
+        // only our pointer-based selection logic, so we block the default.
+        if (e.touches.length === 1) {
+          e.preventDefault();  // kills double-tap zoom & touch gestures in grid
+        }
+      },
+      { passive: false } // required so preventDefault actually works
+    );
+
+    const checkBtn = document.getElementById('checkBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const messageEl = document.getElementById('message');
+    const selectionTextEl = document.getElementById('selectionText');
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const revealOverlay = document.getElementById('revealOverlay');
+    const closeRevealBtn = document.getElementById('closeReveal');
+    const snowContainer = document.getElementById('snow');
+
+    const rows = gridLetters.length;
+    const cols = gridLetters[0].length;
+
+    const cellEls = [];
+    let isDragging = false;
+    let currentPointerId = null;
+    let selection = [];
+    const selectionSet = new Set();
+
+    const foundTheme = new Set();
+    let spanagramFound = false;
+    let revealShown = false;
+
+    // SVG path overlay
+    let pathSvg, pathLine;
+
+    // --- UTILS ----------------------------------------------------------------
+    function coordKey(r, c) { return `${r},${c}`; }
+
+    function cellsEqualPath(selectionCoords, pathCoords) {
+      if (selectionCoords.length !== pathCoords.length) return false;
+      const forward = selectionCoords.every((p,i) => p[0]===pathCoords[i][0] && p[1]===pathCoords[i][1]);
+      if (forward) return true;
+      const reversed = [...pathCoords].reverse();
+      return selectionCoords.every((p,i) => p[0]===reversed[i][0] && p[1]===reversed[i][1]);
+    }
+
+    function isAdjacent(a, b) {
+      const dr = Math.abs(a.r - b.r);
+      const dc = Math.abs(a.c - b.c);
+      return dr <= 1 && dc <= 1 && !(dr === 0 && dc === 0);
+    }
+
+    function setMessage(text, type='neutral') {
+      messageEl.textContent = text;
+      messageEl.className = type;
+    }
+
+    function updateSelectionView() {
+      if (selection.length === 0) {
+        selectionTextEl.innerHTML = 'Current selection: <span>(none)</span>';
+      } else {
+        const letters = selection.map(p => gridLetters[p.r][p.c]).join('');
+        selectionTextEl.innerHTML = 'Current selection: <span>' + letters + '</span>';
       }
-    },
-    { passive: false } // required so preventDefault actually works
-  );
-    
-  const checkBtn = document.getElementById('checkBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const messageEl = document.getElementById('message');
-  const selectionTextEl = document.getElementById('selectionText');
-  const themeToggleBtn = document.getElementById('themeToggle');
-  const revealOverlay = document.getElementById('revealOverlay');
-  const closeRevealBtn = document.getElementById('closeReveal');
-  const snowContainer = document.getElementById('snow');
+      updatePathOverlay();
+    }
 
-  const rows = gridLetters.length;
-  const cols = gridLetters[0].length;
+    // --- SNOW CREATION --------------------------------------------------------
+    function createSnowflakes(count = 60) {
+      for (let i = 0; i < count; i++) {
+        const flake = document.createElement('div');
+        flake.className = 'flake';
+        const size = 4 + Math.random() * 6;
+        flake.style.width = size + 'px';
+        flake.style.height = size + 'px';
+        flake.style.left = Math.random() * 100 + '%';
+        flake.style.opacity = (0.3 + Math.random() * 0.7).toFixed(2);
+        const duration = 8 + Math.random() * 10;
+        const delay = -Math.random() * 20;
+        flake.style.animationDuration = duration + 's';
+        flake.style.animationDelay = delay + 's';
+        snowContainer.appendChild(flake);
+      }
+    }
 
-  const cellEls = [];
-  let isDragging = false;
-  let currentPointerId = null;
-  let selection = [];
-  const selectionSet = new Set();
+    // --- GRID RENDER ----------------------------------------------------------
+    function buildGrid() {
+      for (let r = 0; r < rows; r++) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'row';
 
-  const foundTheme = new Set();
-  let spanagramFound = false;
-  let revealShown = false;
+        cellEls[r] = [];
 
-  // --- UTILS ----------------------------------------------------------------
-  function coordKey(r, c) { return `${r},${c}`; }
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.textContent = gridLetters[r][c];
+          cell.dataset.row = r;
+          cell.dataset.col = c;
 
-  function cellsEqualPath(selectionCoords, pathCoords) {
-    if (selectionCoords.length !== pathCoords.length) return false;
-    const forward = selectionCoords.every((p,i) => p[0]===pathCoords[i][0] && p[1]===pathCoords[i][1]);
-    if (forward) return true;
-    const reversed = [...pathCoords].reverse();
-    return selectionCoords.every((p,i) => p[0]===reversed[i][0] && p[1]===reversed[i][1]);
-  }
+          cell.addEventListener('pointerdown', onCellDown);
+          // we keep pointerenter for mouse; touch uses global pointermove
+          cell.addEventListener('pointerenter', onCellEnter);
 
-  function isAdjacent(a, b) {
-    const dr = Math.abs(a.r - b.r);
-    const dc = Math.abs(a.c - b.c);
-    return dr <= 1 && dc <= 1 && !(dr === 0 && dc === 0);
-  }
+          rowEl.appendChild(cell);
+          cellEls[r][c] = cell;
+        }
+        gridEl.appendChild(rowEl);
+      }
 
-  function setMessage(text, type='neutral') {
-    messageEl.textContent = text;
-    messageEl.className = type;
-  }
+      document.addEventListener('pointerup', endDrag);
+      document.addEventListener('pointercancel', endDrag);
+      document.addEventListener('pointermove', onGlobalPointerMove);
+    }
 
-  function updateSelectionView() {
-    if (selection.length === 0) {
-      selectionTextEl.innerHTML = 'Current selection: <span>(none)</span>';
-      return;
-    }
-    const letters = selection.map(p => gridLetters[p.r][p.c]).join('');
-    selectionTextEl.innerHTML = 'Current selection: <span>' + letters + '</span>';
-  }
+    // --- CONNECTING PATH OVERLAY (NYT-style linking lines) --------------------
+    function initPathOverlay() {
+      pathSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      pathSvg.setAttribute("id", "pathOverlay");
+      pathSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      pathSvg.setAttribute("preserveAspectRatio", "none");
+      pathSvg.style.width = "100%";
+      pathSvg.style.height = "100%";
 
-  // --- SNOW CREATION --------------------------------------------------------
-  function createSnowflakes(count = 60) {
-    for (let i = 0; i < count; i++) {
-      const flake = document.createElement('div');
-      flake.className = 'flake';
-      const size = 4 + Math.random() * 6;
-      flake.style.width = size + 'px';
-      flake.style.height = size + 'px';
-      flake.style.left = Math.random() * 100 + '%';
-      flake.style.opacity = (0.3 + Math.random() * 0.7).toFixed(2);
-      const duration = 8 + Math.random() * 10;
-      const delay = -Math.random() * 20;
-      flake.style.animationDuration = duration + 's';
-      flake.style.animationDelay = delay + 's';
-      snowContainer.appendChild(flake);
-    }
-  }
+      pathLine = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      pathLine.setAttribute("fill", "none");
+      pathLine.setAttribute("stroke", "#203c5a");
+      pathLine.setAttribute("stroke-width", "4");
+      pathLine.setAttribute("stroke-linecap", "round");
+      pathLine.setAttribute("stroke-linejoin", "round");
 
-  // --- GRID RENDER ----------------------------------------------------------
-  function buildGrid() {
-    for (let r = 0; r < rows; r++) {
-      const rowEl = document.createElement('div');
-      rowEl.className = 'row';
+      pathSvg.appendChild(pathLine);
+      gridEl.appendChild(pathSvg);
+    }
 
-      cellEls[r] = [];
+    function updatePathOverlay() {
+      if (!pathSvg || !pathLine) return;
 
-      for (let c = 0; c < cols; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.textContent = gridLetters[r][c];
-        cell.dataset.row = r;
-        cell.dataset.col = c;
+      if (selection.length === 0) {
+        pathLine.setAttribute("points", "");
+        return;
+      }
 
-        cell.addEventListener('pointerdown', onCellDown);
-        // we keep pointerenter for mouse; touch uses global pointermove
-        cell.addEventListener('pointerenter', onCellEnter);
+      const gridRect = gridEl.getBoundingClientRect();
+      // Align viewBox with current grid size so we can use pixel coords
+      pathSvg.setAttribute("viewBox", `0 0 ${gridRect.width} ${gridRect.height}`);
 
-        rowEl.appendChild(cell);
-        cellEls[r][c] = cell;
-      }
-      gridEl.appendChild(rowEl);
-    }
+      const points = selection.map(p => {
+        const cell = cellEls[p.r][p.c];
+        const rect = cell.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2 - gridRect.left;
+        const cy = rect.top + rect.height / 2 - gridRect.top;
+        return `${cx},${cy}`;
+      });
 
-    document.addEventListener('pointerup', endDrag);
-    document.addEventListener('pointercancel', endDrag);
-    document.addEventListener('pointermove', onGlobalPointerMove);
-  }
+      pathLine.setAttribute("points", points.join(" "));
+    }
 
-  // --- SELECTION MANAGEMENT -------------------------------------------------
-  function clearSelection(keepMessage=true) {
-    selection = [];
-    selectionSet.clear();
-    for (let row of cellEls) {
-      for (let cell of row) {
-        cell.classList.remove('selected');
-      }
-    }
-    updateSelectionView();
-    if (!keepMessage) setMessage('');
-  }
+    window.addEventListener("resize", () => {
+      updatePathOverlay();
+    });
 
-  function handleTap(r, c) {
-    const key = coordKey(r, c);
-    const cell = cellEls[r][c];
+    // --- SELECTION MANAGEMENT -------------------------------------------------
+    function clearSelection(keepMessage=true) {
+      selection = [];
+      selectionSet.clear();
+      for (let row of cellEls) {
+        for (let cell of row) {
+          cell.classList.remove('selected');
+        }
+      }
+      updateSelectionView();
+      if (!keepMessage) setMessage('');
+    }
 
-    if (cell.classList.includes && (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram'))) {
-      return;
-    }
-    if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) {
-      return;
-    }
+    function handleTap(r, c) {
+      const key = coordKey(r, c);
+      const cell = cellEls[r][c];
 
-    if (selection.length === 0) {
-      addToSelection(r, c);
-      return;
-    }
+      if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) {
+        return;
+      }
 
-    const last = selection[selection.length-1];
-    const lastKey = coordKey(last.r, last.c);
+      if (selection.length === 0) {
+        addToSelection(r, c);
+        return;
+      }
 
-    // Tap last again to undo it
-    if (key === lastKey) {
-      popLastSelection();
-      return;
-    }
+      const last = selection[selection.length-1];
+      const lastKey = coordKey(last.r, last.c);
 
-    // Tap earlier cell in path => backtrack (truncate) to it
-    if (selectionSet.has(key)) {
-      truncateTo(r, c);
-      return;
-    }
+      // Tap last again to undo it
+      if (key === lastKey) {
+        popLastSelection();
+        return;
+      }
 
-    // Add new cell: must be adjacent
-    if (!isAdjacent(last, {r, c})) return;
+      // Tap earlier cell in path => backtrack (truncate) to it
+      if (selectionSet.has(key)) {
+        truncateTo(r, c);
+        return;
+      }
 
-    addToSelection(r, c);
-  }
+      // Add new cell: must be adjacent
+      if (!isAdjacent(last, {r, c})) return;
 
-  function addToSelection(r, c) {
-    const key = coordKey(r, c);
-    selection.push({r,c});
-    selectionSet.add(key);
-    cellEls[r][c].classList.add('selected');
-    updateSelectionView();
-  }
+      addToSelection(r, c);
+    }
 
-  function popLastSelection() {
-    const last = selection.pop();
-    const key = coordKey(last.r,last.c);
-    selectionSet.delete(key);
-    cellEls[last.r][last.c].classList.remove('selected');
-    updateSelectionView();
-  }
+    function addToSelection(r, c) {
+      const key = coordKey(r, c);
+      selection.push({r,c});
+      selectionSet.add(key);
+      cellEls[r][c].classList.add('selected');
+      updateSelectionView();
+    }
 
-  function truncateTo(r, c) {
-    const idx = selection.findIndex(p => p.r===r && p.c===c);
-    for (let i = selection.length-1; i > idx; i--) {
-      const {r:rr, c:cc} = selection[i];
-      selectionSet.delete(coordKey(rr,cc));
-      cellEls[rr][cc].classList.remove('selected');
-    }
-    selection = selection.slice(0, idx+1);
-    updateSelectionView();
-  }
+    function popLastSelection() {
+      const last = selection.pop();
+      const key = coordKey(last.r,last.c);
+      selectionSet.delete(key);
+      cellEls[last.r][last.c].classList.remove('selected');
+      updateSelectionView();
+    }
 
-  // Drag add/backtrack (used by pointerenter + global pointermove)
-  function tryAddOrBacktrackOnDrag(r, c) {
-    const key = coordKey(r, c);
-    const cell = cellEls[r][c];
+    function truncateTo(r, c) {
+      const idx = selection.findIndex(p => p.r===r && p.c===c);
+      for (let i = selection.length-1; i > idx; i--) {
+        const {r:rr, c:cc} = selection[i];
+        selectionSet.delete(coordKey(rr,cc));
+        cellEls[rr][cc].classList.remove('selected');
+      }
+      selection = selection.slice(0, idx+1);
+      updateSelectionView();
+    }
 
-    if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) return;
+    // Drag add/backtrack (used by pointerenter + global pointermove)
+    function tryAddOrBacktrackOnDrag(r, c) {
+      const key = coordKey(r, c);
+      const cell = cellEls[r][c];
 
-    if (selection.length === 0) {
-      addToSelection(r, c);
-      return;
-    }
+      if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) return;
 
-    const last = selection[selection.length-1];
-    const lastKey = coordKey(last.r, last.c);
-    if (key === lastKey) return;
+      if (selection.length === 0) {
+        addToSelection(r, c);
+        return;
+      }
 
-    // Backtrack one step if this is the previous cell
-    if (selectionSet.has(key)) {
-      if (selection.length >= 2) {
-        const prev = selection[selection.length-2];
-        if (prev.r === r && prev.c === c) {
-          popLastSelection();
-        }
-      }
-      return;
-    }
+      const last = selection[selection.length-1];
+      const lastKey = coordKey(last.r, last.c);
+      if (key === lastKey) return;
 
-    if (!isAdjacent(last, {r, c})) return;
+      // Backtrack one step if this is the previous cell
+      if (selectionSet.has(key)) {
+        if (selection.length >= 2) {
+          const prev = selection[selection.length-2];
+          if (prev.r === r && prev.c === c) {
+            popLastSelection();
+          }
+        }
+        return;
+      }
 
-    addToSelection(r, c);
-  }
+      if (!isAdjacent(last, {r, c})) return;
 
-  // pointer handlers ---------------------------------------------------------
-  function onCellDown(e) {
-    e.preventDefault();
-    const cell = e.currentTarget;
-    const r = +cell.dataset.row;
-    const c = +cell.dataset.col;
-    isDragging = true;
-    currentPointerId = e.pointerId;
-    // treat as tap (click) as well
-    handleTap(r, c);
-  }
+      addToSelection(r, c);
+    }
 
-  function onCellEnter(e) {
-    // This is mainly for mouse; touch will use onGlobalPointerMove
-    if (!isDragging || e.pointerId !== currentPointerId) return;
-    const cell = e.currentTarget;
-    const r = +cell.dataset.row;
-    const c = +cell.dataset.col;
-    tryAddOrBacktrackOnDrag(r, c);
-  }
+    // pointer handlers ---------------------------------------------------------
+    function onCellDown(e) {
+      e.preventDefault();
+      const cell = e.currentTarget;
+      const r = +cell.dataset.row;
+      const c = +cell.dataset.col;
+      isDragging = true;
+      currentPointerId = e.pointerId;
+      // treat as tap (click) as well
+      handleTap(r, c);
+    }
 
-  function onGlobalPointerMove(e) {
-    if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
+    function onCellEnter(e) {
+      // This is mainly for mouse; touch will use onGlobalPointerMove
+      if (!isDragging || e.pointerId !== currentPointerId) return;
+      const cell = e.currentTarget;
+      const r = +cell.dataset.row;
+      const c = +cell.dataset.col;
+      tryAddOrBacktrackOnDrag(r, c);
+    }
 
-    // Use elementFromPoint so touch drag works across cells
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || !el.classList || !el.classList.contains('cell')) return;
+    function onGlobalPointerMove(e) {
+      if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
 
-    const r = +el.dataset.row;
-    const c = +el.dataset.col;
-    tryAddOrBacktrackOnDrag(r, c);
-  }
+      // Use elementFromPoint so touch drag works across cells
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (!el || !el.classList || !el.classList.contains('cell')) return;
 
-  function endDrag(e) {
-    if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
-    isDragging = false;
-    currentPointerId = null;
-  }
+      const r = +el.dataset.row;
+      const c = +el.dataset.col;
+      tryAddOrBacktrackOnDrag(r, c);
+    }
 
-  // --- MARKING FOUND WORDS --------------------------------------------------
-  function markTheme(word) {
-    for (let [r,c] of word.path) {
-      cellEls[r][c].classList.remove('selected');
-      cellEls[r][c].classList.add('found-theme');
-    }
-    foundTheme.add(word.id);
-  }
+    function endDrag(e) {
+      if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
+      isDragging = false;
+      currentPointerId = null;
+    }
 
-  function markSpan() {
-    for (let [r,c] of spanagram.path) {
-      cellEls[r][c].classList.remove('selected');
-      cellEls[r][c].classList.add('found-spanagram');
-    }
-    spanagramFound = true;
-  }
+    // --- MARKING FOUND WORDS --------------------------------------------------
+    function markTheme(word) {
+      for (let [r,c] of word.path) {
+        cellEls[r][c].classList.remove('selected');
+        cellEls[r][c].classList.add('found-theme');
+      }
+      foundTheme.add(word.id);
+    }
 
-  // --- REVEAL OVERLAY -------------------------------------------------------
-  function showGiftReveal() {
-    if (revealShown) return;
-    revealShown = true;
-    revealOverlay.classList.add('visible');
-  }
+    function markSpan() {
+      for (let [r,c] of spanagram.path) {
+        cellEls[r][c].classList.remove('selected');
+        cellEls[r][c].classList.add('found-spanagram');
+      }
+      spanagramFound = true;
+    }
 
-  // --- CHECK LOGIC ----------------------------------------------------------
-  function handleCheck() {
-    if (selection.length === 0) {
-      setMessage("Select letters by tapping or dragging.", "neutral");
-      return;
-    }
+    // --- REVEAL OVERLAY -------------------------------------------------------
+    function showGiftReveal() {
+      if (revealShown) return;
+      revealShown = true;
+      revealOverlay.classList.add('visible');
+    }
 
-    const coords = selection.map(p => [p.r,p.c]);
+    // --- CHECK LOGIC ----------------------------------------------------------
+    function handleCheck() {
+      if (selection.length === 0) {
+        setMessage("Select letters by tapping or dragging.", "neutral");
+        return;
+      }
 
-    if (!spanagramFound && cellsEqualPath(coords, spanagram.path)) {
-      markSpan();
-      clearSelection();
-      setMessage("You found the phrase describing your gift!", "success");
-      checkWin();
-      return;
-    }
+      const coords = selection.map(p => [p.r,p.c]);
 
-    for (let word of themeWords) {
-      if (foundTheme.has(word.id)) continue;
-      if (cellsEqualPath(coords, word.path)) {
-        markTheme(word);
-        clearSelection();
-        setMessage("You found a hidden word!", "success");
-        checkWin();
-        return;
-      }
-    }
+      if (!spanagramFound && cellsEqualPath(coords, spanagram.path)) {
+        markSpan();
+        clearSelection();
+        setMessage("You found the phrase describing your gift!", "success");
+        checkWin();
+        return;
+      }
 
-    clearSelection();
-    setMessage("Not a hidden word — try again!", "error");
-  }
+      for (let word of themeWords) {
+        if (foundTheme.has(word.id)) continue;
+        if (cellsEqualPath(coords, word.path)) {
+          markTheme(word);
+          clearSelection();
+          setMessage("You found a hidden word!", "success");
+          checkWin();
+          return;
+        }
+      }
 
-  function checkWin() {
-    if (spanagramFound && foundTheme.size === themeWords.length) {
-      setMessage("You solved the puzzle! Your gift is a COZY GETAWAY 🎁", "success");
-      showGiftReveal();
-    }
-  }
+      clearSelection();
+      setMessage("Not a hidden word — try again!", "error");
+    }
 
-  // --- THEME TOGGLE ---------------------------------------------------------
-  let currentTheme = 'cozy';
+    function checkWin() {
+      if (spanagramFound && foundTheme.size === themeWords.length) {
+        setMessage("You solved the puzzle! Your gift is a COZY GETAWAY 🎁", "success");
+        showGiftReveal();
+      }
+    }
 
-  function applyTheme() {
-    document.body.classList.remove('cozy','festive');
-    document.body.classList.add(currentTheme);
-    if (currentTheme === 'cozy') {
-      themeToggleBtn.textContent = "Switch to Festive Theme";
-    } else {
-      themeToggleBtn.textContent = "Switch to Cozy Theme";
-    }
-  }
+    // --- THEME TOGGLE ---------------------------------------------------------
+    let currentTheme = 'cozy';
 
-  themeToggleBtn.addEventListener('click', () => {
-    currentTheme = (currentTheme === 'cozy') ? 'festive' : 'cozy';
-    applyTheme();
-  });
+    function applyTheme() {
+      document.body.classList.remove('cozy','festive');
+      document.body.classList.add(currentTheme);
+      if (currentTheme === 'cozy') {
+        themeToggleBtn.textContent = "Switch to Festive Theme";
+      } else {
+        themeToggleBtn.textContent = "Switch to Cozy Theme";
+      }
+    }
 
-  closeRevealBtn.addEventListener('click', () => {
-    revealOverlay.classList.remove('visible');
-  });
+    themeToggleBtn.addEventListener('click', () => {
+      currentTheme = (currentTheme === 'cozy') ? 'festive' : 'cozy';
+      applyTheme();
+    });
 
-  revealOverlay.addEventListener('click', (e) => {
-    if (e.target === revealOverlay) {
-      revealOverlay.classList.remove('visible');
-    }
-  });
+    closeRevealBtn.addEventListener('click', () => {
+      revealOverlay.classList.remove('visible');
+    });
 
-  // --- INIT -----------------------------------------------------------------
-  createSnowflakes(70);
-  buildGrid();
-  currentTheme = 'cozy';
-  applyTheme();
-  updateSelectionView();
-  setMessage('Tap or drag to select letters, then tap "Check selection".', 'neutral');
+    revealOverlay.addEventListener('click', (e) => {
+      if (e.target === revealOverlay) {
+        revealOverlay.classList.remove('visible');
+      }
+    });
 
-  checkBtn.addEventListener('click', handleCheck);
-  clearBtn.addEventListener('click', () => clearSelection(false));
-</script>
+    // --- INIT -----------------------------------------------------------------
+    createSnowflakes(70);
+    buildGrid();
+    initPathOverlay();
+    currentTheme = 'cozy';
+    applyTheme();
+    updateSelectionView();
+    setMessage('Tap or drag to select letters, then tap "Check selection".', 'neutral');
+
+    checkBtn.addEventListener('click', handleCheck);
+    clearBtn.addEventListener('click', () => clearSelection(false));
+  </script>
 </body>
 </html>
