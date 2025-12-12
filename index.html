@@ -443,23 +443,18 @@
   // --- STATE / ELEMENTS -----------------------------------------------------
   const gridEl = document.getElementById('grid');
 
-  // --- Prevent double-tap zoom INSIDE the grid (iOS Safari especially) ------
-  (function () {
-    let lastTouchEndTime = 0;
-  
-    gridEl.addEventListener(
-      'touchend',
-      function (e) {
-        const now = Date.now();
-        // Second tap within 400ms => treat as our own interaction, not zoom
-        if (now - lastTouchEndTime < 400) {
-          e.preventDefault();  // blocks the browser's double-tap-to-zoom
-        }
-        lastTouchEndTime = now;
-      },
-      { passive: false } // MUST be non-passive to call preventDefault()
-    );
-  })();
+  // --- Strongly disable double-tap zoom INSIDE the grid (especially iOS) ----
+  gridEl.addEventListener(
+    'touchstart',
+    function (e) {
+      // We don't need any native touch behavior (scroll/zoom) inside the grid,
+      // only our pointer-based selection logic, so we block the default.
+      if (e.touches.length === 1) {
+        e.preventDefault();  // kills double-tap zoom & touch gestures in grid
+      }
+    },
+    { passive: false } // required so preventDefault actually works
+  );
     
   const checkBtn = document.getElementById('checkBtn');
   const clearBtn = document.getElementById('clearBtn');
