@@ -10,10 +10,10 @@
       color: #222;
 
       /* Christmas palette (tuned for legibility over both themes) */
-      --xmas-green-fill: rgba(14, 143, 47, 0.55);
+      --xmas-green-fill: rgba(14, 143, 47, 0.95);
       --xmas-green-line: rgba(14, 143, 47, 0.95);
 
-      --xmas-red-fill: rgba(217, 48, 48, 0.55);
+      --xmas-red-fill: rgba(217, 48, 48, 0.95);
       --xmas-red-line: rgba(217, 48, 48, 0.95);
 
       /* Selection is always Christmas green */
@@ -351,7 +351,7 @@
   <div id="snow"></div>
 
   <h1>Gift Puzzle</h1>
-  <button id="themeToggle">Switch to Festive Theme</button>
+  <button id="themeToggle">Switch to Festive View</button>
   <p><strong>Theme: My Gift To You</strong> — Tap or drag across adjacent letters (including diagonals) to form hidden words. Tap "Check selection" to see if you found one.</p>
 
   <div id="game">
@@ -816,7 +816,7 @@
   function applyTheme() {
     document.body.classList.remove('cozy','festive');
     document.body.classList.add(currentTheme);
-    themeToggleBtn.textContent = (currentTheme === 'cozy') ? "Switch to Festive Theme" : "Switch to Cozy Theme";
+    themeToggleBtn.textContent = (currentTheme === 'cozy') ? "Switch to Festive View" : "Switch to Cozy View";
     updateOverlay();
   }
 
