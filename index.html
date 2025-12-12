@@ -1,887 +1,301 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Gift Puzzle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #222;
-    }
+<meta charset="utf-8" />
+<title>Gift Puzzle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    body {
-      margin: 0;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      transition: background 0.4s ease, color 0.4s ease;
-    }
+<style>
+:root {
+  --theme-green: #0F8F2F;
+  --theme-red: #D93030;
+  --select-blue: #7fb3ff;
+}
 
-    /* THEMES -------------------------------------------------------- */
-    body.cozy {
-      background: radial-gradient(circle at top, #fffdf8 0, #f5f5fa 40%, #ececf5 100%);
-      color: #222;
-    }
+body {
+  margin: 0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background 0.4s ease, color 0.4s ease;
+}
 
-    body.festive {
-      background: linear-gradient(180deg, #123524 0%, #0b1d14 40%, #2a0a0a 100%);
-      color: #f8f8f8;
-    }
+/* THEMES */
+body.cozy {
+  background: radial-gradient(circle at top, #fffdf8 0, #f5f5fa 40%, #ececf5 100%);
+  color: #222;
+}
 
-    body.festive h1,
-    body.festive p {
-      color: #f8f8f8;
-    }
+body.festive {
+  background: linear-gradient(180deg, #123524 0%, #0b1d14 40%, #2a0a0a 100%);
+  color: #f8f8f8;
+}
 
-    /* SNOWFALL ------------------------------------------------------ */
-    #snow {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: -1;
-      overflow: hidden;
-    }
+/* HEADER */
+h1 { margin-bottom: 0.25rem; }
 
-    .flake {
-      position: absolute;
-      top: -10px;
-      border-radius: 50%;
-      background: #ffffff;
-      animation-name: snow-fall;
-      animation-timing-function: linear;
-      animation-iteration-count: infinite;
-    }
+#themeToggle {
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  padding: 0.35rem 1rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
 
-    @keyframes snow-fall {
-      0% {
-        transform: translateY(0) translateX(0);
-      }
-      100% {
-        transform: translateY(110vh) translateX(15px);
-      }
-    }
+/* GAME LAYOUT */
+#game {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;
+}
 
-    /* LAYOUT -------------------------------------------------------- */
-    h1 {
-      margin-bottom: 0.25rem;
-    }
+#grid {
+  position: relative;
+  touch-action: none;
+}
 
-    #themeToggle {
-      margin-top: 0.25rem;
-      margin-bottom: 0.75rem;
-      border-radius: 999px;
-      border: 1px solid #333;
-      padding: 0.3rem 0.9rem;
-      background: #ffffffaa;
-      color: #222;
-      font-size: 0.85rem;
-      cursor: pointer;
-      backdrop-filter: blur(4px);
-      transition: background 0.2s, transform 0.1s, box-shadow 0.1s;
-    }
+/* SVG path overlay */
+#pathOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
-    body.festive #themeToggle {
-      background: #04130fbb;
-      color: #f8f8f8;
-      border-color: #f8f8f8aa;
-    }
+/* GRID */
+.row { display: flex; }
 
-    #themeToggle:hover {
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-      transform: translateY(-1px);
-    }
+.cell {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  color: inherit;
+}
 
-    #game {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-top: 0.5rem;
-      width: 100%;
-      max-width: 800px;
-      position: relative;
-      z-index: 1;
-    }
+/* Circle halo */
+.cell::before {
+  content: "";
+  position: absolute;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: transparent;
+  transition: border-color 0.15s ease;
+}
 
-    @media (min-width: 700px) {
-      #game {
-        flex-direction: row;
-        align-items: flex-start;
-      }
-    }
+/* ACTIVE SELECTION */
+.cell.selected::before {
+  border-color: var(--select-blue);
+}
 
-    #grid {
-      display: inline-block;
-      border: 2px solid #333;
-      border-radius: 8px;
-      background: #fff;
-      touch-action: none;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
-      position: relative; /* for SVG overlay */
-    }
+/* FOUND WORDS */
+.cell.found-theme::before {
+  border-color: var(--theme-green);
+}
 
-    body.festive #grid {
-      border-color: #f8f8f8;
-      background: rgba(18, 25, 25, 0.94);
-    }
+.cell.found-spanagram::before {
+  border-color: var(--theme-red);
+}
 
-    .row {
-      display: flex;
-    }
+.cell.found-theme,
+.cell.found-spanagram {
+  color: white;
+}
 
-    /* SVG overlay to draw connecting lines between selected letters */
-    #pathOverlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
+/* SIDEBAR */
+#sidebar {
+  flex: 1;
+  padding: 1rem;
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.25);
+}
 
-    /* Base cell – no visible gridlines, letter in a "slot" */
-    .cell {
-      width: 3rem;
-      height: 3rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid transparent; /* removes grid look */
-      font-weight: 700;
-      font-size: 1.4rem;
-      cursor: pointer;
-      user-select: none;
-      box-sizing: border-box;
-      position: relative;      /* for the circle (::before) */
-      background: transparent; /* background handled by circle */
-      color: inherit;
-      z-index: 1;              /* above the circle */
-    }
+button {
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  padding: 0.35rem 1rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
 
-    /* Circle "token" behind the letter */
-    .cell::before {
-      content: "";
-      position: absolute;
-      width: 2.3rem;
-      height: 2.3rem;
-      border-radius: 50%;
-      background: transparent;
-      transition: background-color 0.12s, transform 0.08s, box-shadow 0.12s;
-      z-index: 0;
-    }
+button.secondary { opacity: 0.8; }
 
-    /* ornament hover (only on non-found cells) */
-    @media (hover: hover) {
-      .cell:not(.found-theme):not(.found-spanagram):hover::before {
-        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-        transform: scale(1.05);
-        background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9), #d7e7ff);
-      }
+#selectionText {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
 
-      body.festive .cell:not(.found-theme):not(.found-spanagram):hover::before {
-        background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.8), #203c5a);
-      }
-    }
-
-    /* Selected path (current selection) – light blue circle */
-    .cell.selected::before {
-      background: #d7e7ff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    }
-
-    /* CHRISTMAS colors for found words --------------------------------- */
-    .cell.found-theme::before {
-      background: #0F8F2F;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-    }
-
-    .cell.found-theme {
-      color: white;
-    }
-
-    .cell.found-spanagram::before {
-      background: #D93030;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-    }
-
-    .cell.found-spanagram {
-      color: white;
-    }
-
-    .cell.found-theme.selected::before,
-    .cell.found-spanagram.selected::before {
-      box-shadow:
-        0 0 0 2px rgba(255,255,255,0.7) inset,
-        0 2px 6px rgba(0,0,0,0.35);
-    }
-
-    body.festive .cell {
-      color: #f2f2f2;
-    }
-
-    #sidebar {
-      flex: 1;
-      padding: 1rem;
-      background: #ffffff;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    body.festive #sidebar {
-      background: rgba(0,0,0,0.35);
-      border-color: rgba(255,255,255,0.35);
-      color: #f8f8f8;
-      backdrop-filter: blur(6px);
-    }
-
-    #sidebar h2 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-      font-size: 1.1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #555;
-    }
-
-    body.festive #sidebar h2 {
-      color: #f0f0f0;
-    }
-
-    #controls {
-      margin-top: 0.5rem;
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border-radius: 999px;
-      border: 1px solid #333;
-      padding: 0.35rem 0.9rem;
-      background: #222;
-      color: #fff;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background-color 0.12s, transform 0.08s, box-shadow 0.08s;
-    }
-
-    button.secondary {
-      background: #fff;
-      color: #222;
-      border-color: #999;
-    }
-
-    body.festive button.secondary {
-      background: #04130f;
-      color: #f8f8f8;
-      border-color: #f8f8f8aa;
-    }
-
-    button:active {
-      transform: translateY(1px);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.2) inset;
-    }
-
-    #message {
-      margin-top: 0.75rem;
-      min-height: 1.2rem;
-      font-size: 0.95rem;
-      color: #333;
-    }
-
-    #message.success {
-      color: #0F8F2F;
-      font-weight: 700;
-    }
-
-    #message.error {
-      color: #D93030;
-    }
-
-    #message.neutral {
-      color: #555;
-    }
-
-    body.festive #message {
-      color: #f2f2f2;
-    }
-
-    /* current selection view */
-    #selectionText {
-      margin-top: 0.6rem;
-      font-size: 0.9rem;
-      color: #444;
-      word-break: break-word;
-    }
-
-    body.festive #selectionText {
-      color: #e0e0e0;
-    }
-
-    #selectionText span {
-      font-weight: 600;
-    }
-
-    /* REVEAL OVERLAY -------------------------------------------------- */
-    #revealOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.35s ease;
-      z-index: 10;
-    }
-
-    #revealOverlay.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .reveal-card {
-      background: #ffffff;
-      color: #222;
-      padding: 1.6rem 2.2rem;
-      border-radius: 14px;
-      max-width: 420px;
-      text-align: center;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-      transform: scale(0.8) translateY(20px);
-      animation: pop-in 0.4s ease forwards;
-      position: relative;
-      overflow: hidden;
-    }
-
-    body.festive .reveal-card {
-      background: #15231c;
-      color: #fdfdfd;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-
-    .reveal-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 55%),
-                  radial-gradient(circle at bottom right, rgba(255,255,255,0.18), transparent 55%);
-      pointer-events: none;
-    }
-
-    @keyframes pop-in {
-      from {
-        opacity: 0;
-        transform: scale(0.7) translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
-    }
-
-    .reveal-card h2 {
-      margin-top: 0;
-      margin-bottom: 0.4rem;
-    }
-
-    .reveal-card p {
-      margin-top: 0.2rem;
-      margin-bottom: 1rem;
-      line-height: 1.4;
-    }
-
-    .reveal-card button {
-      margin-top: 0.5rem;
-    }
-
-    /* Disable zooming gestures ONLY inside the puzzle grid */
-    #grid,
-    #grid .cell {
-      touch-action: none;
-    }
-  </style>
+/* Disable zoom inside grid */
+#grid, .cell {
+  touch-action: none;
+}
+</style>
 </head>
-<body>
-  <!-- Snow background -->
-  <div id="snow"></div>
 
-  <h1>Gift Puzzle</h1>
-  <button id="themeToggle">Switch to Festive Theme</button>
-  <p><strong>Theme: My Gift To You</strong> — Tap or drag across adjacent letters (including diagonals) to form hidden words. Tap "Check selection" to see if you found one.</p>
+<body class="festive">
 
-  <div id="game">
-    <div id="grid"></div>
-    <aside id="sidebar">
-      <h2>Selection</h2>
-      <div id="controls">
-        <button id="checkBtn">Check selection</button>
-        <button id="clearBtn" class="secondary">Clear selection</button>
-      </div>
-      <div id="selectionText"></div>
-      <div id="message" class="neutral"></div>
-    </aside>
-  </div>
+<h1>Gift Puzzle</h1>
+<button id="themeToggle">Switch to Cozy Theme</button>
 
-  <!-- Gift reveal overlay -->
-  <div id="revealOverlay">
-    <div class="reveal-card">
-      <h2>Surprise! 🎁</h2>
-      <p>Your gift is a <strong>COZY GETAWAY</strong> – February 28 - March 1, a cozy hotel stay to see Mason Jennings at the Egyptian Theater.</p>
-      <p>Merry Christmas! I love you so much.</p>
-      <button id="closeReveal">Close</button>
+<div id="game">
+  <div id="grid"></div>
+
+  <aside id="sidebar">
+    <div>
+      <button id="checkBtn">Check selection</button>
+      <button id="clearBtn" class="secondary">Clear</button>
     </div>
-  </div>
-
-  <script>
-    // --- DATA -----------------------------------------------------------------
-    const gridLetters = [
-      ['E','G','I','F','S','A','M','A','P'],
-      ['P','G','N','O','P','T','R','O','C'],
-      ['T','Y','R','N','A','C','R','K','I'],
-      ['S','I','A','L','N','O','E','T','Y'],
-      ['C','O','Z','Y','G','I','C','A','Y'],
-      ['S','N','O','W','E','T','A','W','T'],
-      ['H','O','S','T','O','E','J','A','R'],
-      ['T','L','A','G','N','N','U','F','Y'],
-      ['E','T','R','I','N','I','R','B','E'],
-    ];
-
-    const spanagram = {
-      id: 'SPANAGRAM',
-      label: 'COZY GETAWAY',
-      path: [
-        [4,0],[4,1],[4,2],[4,3],[4,4],
-        [5,4],[5,5],[5,6],[5,7],[4,7],[4,8],
-      ],
-    };
-
-    const themeWords = [
-      { id: 'MASON',     label: 'Mason',     path: [ [0,6],[0,5],[0,4],[1,3],[1,2] ] },
-      { id: 'HOTEL',     label: 'Hotel',     path: [ [6,0],[6,1],[7,0],[8,0],[7,1] ] },
-      { id: 'CONCERT',   label: 'Concert',   path: [ [4,6],[3,5],[3,4],[2,5],[3,6],[2,6],[1,5] ] },
-      { id: 'PARK_CITY', label: 'Park City', path: [ [0,8],[0,7],[1,6],[2,7],[1,8],[2,8],[3,7],[3,8] ] },
-      { id: 'EGYPTIAN',  label: 'Egyptian',  path: [ [0,0],[1,1],[2,1],[1,0],[2,0],[3,1],[3,2],[2,3] ] },
-      { id: 'FEBRUARY',  label: 'February',  path: [ [7,7],[8,8],[8,7],[8,6],[7,6],[6,7],[6,8],[7,8] ] },
-      { id: 'JENNINGS',  label: 'Jennings',  path: [ [6,6],[6,5],[7,5],[7,4],[8,5],[8,4],[7,3],[6,2] ] },
-    ];
-
-    // --- STATE / ELEMENTS -----------------------------------------------------
-    const gridEl = document.getElementById('grid');
-
-    // --- Strongly disable double-tap zoom INSIDE the grid (especially iOS) ----
-    gridEl.addEventListener(
-      'touchstart',
-      function (e) {
-        // We don't need any native touch behavior (scroll/zoom) inside the grid,
-        // only our pointer-based selection logic, so we block the default.
-        if (e.touches.length === 1) {
-          e.preventDefault();  // kills double-tap zoom & touch gestures in grid
-        }
-      },
-      { passive: false } // required so preventDefault actually works
-    );
-
-    const checkBtn = document.getElementById('checkBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const messageEl = document.getElementById('message');
-    const selectionTextEl = document.getElementById('selectionText');
-    const themeToggleBtn = document.getElementById('themeToggle');
-    const revealOverlay = document.getElementById('revealOverlay');
-    const closeRevealBtn = document.getElementById('closeReveal');
-    const snowContainer = document.getElementById('snow');
-
-    const rows = gridLetters.length;
-    const cols = gridLetters[0].length;
-
-    const cellEls = [];
-    let isDragging = false;
-    let currentPointerId = null;
-    let selection = [];
-    const selectionSet = new Set();
-
-    const foundTheme = new Set();
-    let spanagramFound = false;
-    let revealShown = false;
-
-    // SVG path overlay
-    let pathSvg, pathLine;
-
-    // --- UTILS ----------------------------------------------------------------
-    function coordKey(r, c) { return `${r},${c}`; }
-
-    function cellsEqualPath(selectionCoords, pathCoords) {
-      if (selectionCoords.length !== pathCoords.length) return false;
-      const forward = selectionCoords.every((p,i) => p[0]===pathCoords[i][0] && p[1]===pathCoords[i][1]);
-      if (forward) return true;
-      const reversed = [...pathCoords].reverse();
-      return selectionCoords.every((p,i) => p[0]===reversed[i][0] && p[1]===reversed[i][1]);
-    }
-
-    function isAdjacent(a, b) {
-      const dr = Math.abs(a.r - b.r);
-      const dc = Math.abs(a.c - b.c);
-      return dr <= 1 && dc <= 1 && !(dr === 0 && dc === 0);
-    }
-
-    function setMessage(text, type='neutral') {
-      messageEl.textContent = text;
-      messageEl.className = type;
-    }
-
-    function updateSelectionView() {
-      if (selection.length === 0) {
-        selectionTextEl.innerHTML = 'Current selection: <span>(none)</span>';
-      } else {
-        const letters = selection.map(p => gridLetters[p.r][p.c]).join('');
-        selectionTextEl.innerHTML = 'Current selection: <span>' + letters + '</span>';
-      }
-      updatePathOverlay();
-    }
-
-    // --- SNOW CREATION --------------------------------------------------------
-    function createSnowflakes(count = 60) {
-      for (let i = 0; i < count; i++) {
-        const flake = document.createElement('div');
-        flake.className = 'flake';
-        const size = 4 + Math.random() * 6;
-        flake.style.width = size + 'px';
-        flake.style.height = size + 'px';
-        flake.style.left = Math.random() * 100 + '%';
-        flake.style.opacity = (0.3 + Math.random() * 0.7).toFixed(2);
-        const duration = 8 + Math.random() * 10;
-        const delay = -Math.random() * 20;
-        flake.style.animationDuration = duration + 's';
-        flake.style.animationDelay = delay + 's';
-        snowContainer.appendChild(flake);
-      }
-    }
-
-    // --- GRID RENDER ----------------------------------------------------------
-    function buildGrid() {
-      for (let r = 0; r < rows; r++) {
-        const rowEl = document.createElement('div');
-        rowEl.className = 'row';
-
-        cellEls[r] = [];
-
-        for (let c = 0; c < cols; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.textContent = gridLetters[r][c];
-          cell.dataset.row = r;
-          cell.dataset.col = c;
-
-          cell.addEventListener('pointerdown', onCellDown);
-          // we keep pointerenter for mouse; touch uses global pointermove
-          cell.addEventListener('pointerenter', onCellEnter);
-
-          rowEl.appendChild(cell);
-          cellEls[r][c] = cell;
-        }
-        gridEl.appendChild(rowEl);
-      }
-
-      document.addEventListener('pointerup', endDrag);
-      document.addEventListener('pointercancel', endDrag);
-      document.addEventListener('pointermove', onGlobalPointerMove);
-    }
-
-    // --- CONNECTING PATH OVERLAY (NYT-style linking lines) --------------------
-    function initPathOverlay() {
-      pathSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      pathSvg.setAttribute("id", "pathOverlay");
-      pathSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      pathSvg.setAttribute("preserveAspectRatio", "none");
-      pathSvg.style.width = "100%";
-      pathSvg.style.height = "100%";
-
-      pathLine = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-      pathLine.setAttribute("fill", "none");
-      pathLine.setAttribute("stroke", "#203c5a");
-      pathLine.setAttribute("stroke-width", "4");
-      pathLine.setAttribute("stroke-linecap", "round");
-      pathLine.setAttribute("stroke-linejoin", "round");
-
-      pathSvg.appendChild(pathLine);
-      gridEl.appendChild(pathSvg);
-    }
-
-    function updatePathOverlay() {
-      if (!pathSvg || !pathLine) return;
-
-      if (selection.length === 0) {
-        pathLine.setAttribute("points", "");
-        return;
-      }
-
-      const gridRect = gridEl.getBoundingClientRect();
-      // Align viewBox with current grid size so we can use pixel coords
-      pathSvg.setAttribute("viewBox", `0 0 ${gridRect.width} ${gridRect.height}`);
-
-      const points = selection.map(p => {
-        const cell = cellEls[p.r][p.c];
-        const rect = cell.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2 - gridRect.left;
-        const cy = rect.top + rect.height / 2 - gridRect.top;
-        return `${cx},${cy}`;
-      });
-
-      pathLine.setAttribute("points", points.join(" "));
-    }
-
-    window.addEventListener("resize", () => {
-      updatePathOverlay();
-    });
-
-    // --- SELECTION MANAGEMENT -------------------------------------------------
-    function clearSelection(keepMessage=true) {
-      selection = [];
-      selectionSet.clear();
-      for (let row of cellEls) {
-        for (let cell of row) {
-          cell.classList.remove('selected');
-        }
-      }
-      updateSelectionView();
-      if (!keepMessage) setMessage('');
-    }
-
-    function handleTap(r, c) {
-      const key = coordKey(r, c);
-      const cell = cellEls[r][c];
-
-      if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) {
-        return;
-      }
-
-      if (selection.length === 0) {
-        addToSelection(r, c);
-        return;
-      }
-
-      const last = selection[selection.length-1];
-      const lastKey = coordKey(last.r, last.c);
-
-      // Tap last again to undo it
-      if (key === lastKey) {
-        popLastSelection();
-        return;
-      }
-
-      // Tap earlier cell in path => backtrack (truncate) to it
-      if (selectionSet.has(key)) {
-        truncateTo(r, c);
-        return;
-      }
-
-      // Add new cell: must be adjacent
-      if (!isAdjacent(last, {r, c})) return;
-
-      addToSelection(r, c);
-    }
-
-    function addToSelection(r, c) {
-      const key = coordKey(r, c);
-      selection.push({r,c});
-      selectionSet.add(key);
-      cellEls[r][c].classList.add('selected');
-      updateSelectionView();
-    }
-
-    function popLastSelection() {
-      const last = selection.pop();
-      const key = coordKey(last.r,last.c);
-      selectionSet.delete(key);
-      cellEls[last.r][last.c].classList.remove('selected');
-      updateSelectionView();
-    }
-
-    function truncateTo(r, c) {
-      const idx = selection.findIndex(p => p.r===r && p.c===c);
-      for (let i = selection.length-1; i > idx; i--) {
-        const {r:rr, c:cc} = selection[i];
-        selectionSet.delete(coordKey(rr,cc));
-        cellEls[rr][cc].classList.remove('selected');
-      }
-      selection = selection.slice(0, idx+1);
-      updateSelectionView();
-    }
-
-    // Drag add/backtrack (used by pointerenter + global pointermove)
-    function tryAddOrBacktrackOnDrag(r, c) {
-      const key = coordKey(r, c);
-      const cell = cellEls[r][c];
-
-      if (cell.classList.contains('found-theme') || cell.classList.contains('found-spanagram')) return;
-
-      if (selection.length === 0) {
-        addToSelection(r, c);
-        return;
-      }
-
-      const last = selection[selection.length-1];
-      const lastKey = coordKey(last.r, last.c);
-      if (key === lastKey) return;
-
-      // Backtrack one step if this is the previous cell
-      if (selectionSet.has(key)) {
-        if (selection.length >= 2) {
-          const prev = selection[selection.length-2];
-          if (prev.r === r && prev.c === c) {
-            popLastSelection();
-          }
-        }
-        return;
-      }
-
-      if (!isAdjacent(last, {r, c})) return;
-
-      addToSelection(r, c);
-    }
-
-    // pointer handlers ---------------------------------------------------------
-    function onCellDown(e) {
-      e.preventDefault();
-      const cell = e.currentTarget;
-      const r = +cell.dataset.row;
-      const c = +cell.dataset.col;
-      isDragging = true;
-      currentPointerId = e.pointerId;
-      // treat as tap (click) as well
-      handleTap(r, c);
-    }
-
-    function onCellEnter(e) {
-      // This is mainly for mouse; touch will use onGlobalPointerMove
-      if (!isDragging || e.pointerId !== currentPointerId) return;
-      const cell = e.currentTarget;
-      const r = +cell.dataset.row;
-      const c = +cell.dataset.col;
-      tryAddOrBacktrackOnDrag(r, c);
-    }
-
-    function onGlobalPointerMove(e) {
-      if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
-
-      // Use elementFromPoint so touch drag works across cells
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      if (!el || !el.classList || !el.classList.contains('cell')) return;
-
-      const r = +el.dataset.row;
-      const c = +el.dataset.col;
-      tryAddOrBacktrackOnDrag(r, c);
-    }
-
-    function endDrag(e) {
-      if (!isDragging || (currentPointerId !== null && e.pointerId !== currentPointerId)) return;
-      isDragging = false;
-      currentPointerId = null;
-    }
-
-    // --- MARKING FOUND WORDS --------------------------------------------------
-    function markTheme(word) {
-      for (let [r,c] of word.path) {
-        cellEls[r][c].classList.remove('selected');
-        cellEls[r][c].classList.add('found-theme');
-      }
-      foundTheme.add(word.id);
-    }
-
-    function markSpan() {
-      for (let [r,c] of spanagram.path) {
-        cellEls[r][c].classList.remove('selected');
-        cellEls[r][c].classList.add('found-spanagram');
-      }
-      spanagramFound = true;
-    }
-
-    // --- REVEAL OVERLAY -------------------------------------------------------
-    function showGiftReveal() {
-      if (revealShown) return;
-      revealShown = true;
-      revealOverlay.classList.add('visible');
-    }
-
-    // --- CHECK LOGIC ----------------------------------------------------------
-    function handleCheck() {
-      if (selection.length === 0) {
-        setMessage("Select letters by tapping or dragging.", "neutral");
-        return;
-      }
-
-      const coords = selection.map(p => [p.r,p.c]);
-
-      if (!spanagramFound && cellsEqualPath(coords, spanagram.path)) {
-        markSpan();
-        clearSelection();
-        setMessage("You found the phrase describing your gift!", "success");
-        checkWin();
-        return;
-      }
-
-      for (let word of themeWords) {
-        if (foundTheme.has(word.id)) continue;
-        if (cellsEqualPath(coords, word.path)) {
-          markTheme(word);
-          clearSelection();
-          setMessage("You found a hidden word!", "success");
-          checkWin();
-          return;
-        }
-      }
-
-      clearSelection();
-      setMessage("Not a hidden word — try again!", "error");
-    }
-
-    function checkWin() {
-      if (spanagramFound && foundTheme.size === themeWords.length) {
-        setMessage("You solved the puzzle! Your gift is a COZY GETAWAY 🎁", "success");
-        showGiftReveal();
-      }
-    }
-
-    // --- THEME TOGGLE ---------------------------------------------------------
-    let currentTheme = 'cozy';
-
-    function applyTheme() {
-      document.body.classList.remove('cozy','festive');
-      document.body.classList.add(currentTheme);
-      if (currentTheme === 'cozy') {
-        themeToggleBtn.textContent = "Switch to Festive Theme";
-      } else {
-        themeToggleBtn.textContent = "Switch to Cozy Theme";
-      }
-    }
-
-    themeToggleBtn.addEventListener('click', () => {
-      currentTheme = (currentTheme === 'cozy') ? 'festive' : 'cozy';
-      applyTheme();
-    });
-
-    closeRevealBtn.addEventListener('click', () => {
-      revealOverlay.classList.remove('visible');
-    });
-
-    revealOverlay.addEventListener('click', (e) => {
-      if (e.target === revealOverlay) {
-        revealOverlay.classList.remove('visible');
-      }
-    });
-
-    // --- INIT -----------------------------------------------------------------
-    createSnowflakes(70);
-    buildGrid();
-    initPathOverlay();
-    currentTheme = 'cozy';
-    applyTheme();
-    updateSelectionView();
-    setMessage('Tap or drag to select letters, then tap "Check selection".', 'neutral');
-
-    checkBtn.addEventListener('click', handleCheck);
-    clearBtn.addEventListener('click', () => clearSelection(false));
-  </script>
+    <div id="selectionText"></div>
+    <div id="message"></div>
+  </aside>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+const gridLetters = [
+ ['E','G','I','F','S','A','M','A','P'],
+ ['P','G','N','O','P','T','R','O','C'],
+ ['T','Y','R','N','A','C','R','K','I'],
+ ['S','I','A','L','N','O','E','T','Y'],
+ ['C','O','Z','Y','G','I','C','A','Y'],
+ ['S','N','O','W','E','T','A','W','T'],
+ ['H','O','S','T','O','E','J','A','R'],
+ ['T','L','A','G','N','N','U','F','Y'],
+ ['E','T','R','I','N','I','R','B','E']
+];
+
+const spanagram = {
+ path: [[4,0],[4,1],[4,2],[4,3],[4,4],[5,4],[5,5],[5,6],[5,7],[4,7],[4,8]]
+};
+
+/* ---------------- STATE ---------------- */
+const gridEl = document.getElementById("grid");
+const selectionText = document.getElementById("selectionText");
+let selection = [];
+let dragging = false;
+let pointerId = null;
+
+/* SVG */
+const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+svg.id = "pathOverlay";
+const line = document.createElementNS("http://www.w3.org/2000/svg","polyline");
+line.setAttribute("fill","none");
+line.setAttribute("stroke-width","4");
+line.setAttribute("stroke-linecap","round");
+line.setAttribute("stroke-linejoin","round");
+svg.appendChild(line);
+gridEl.appendChild(svg);
+
+/* ---------------- GRID BUILD ---------------- */
+const cells = [];
+
+gridLetters.forEach((row,r)=>{
+ const rowEl=document.createElement("div");
+ rowEl.className="row";
+ cells[r]=[];
+ row.forEach((ch,c)=>{
+   const cell=document.createElement("div");
+   cell.className="cell";
+   cell.textContent=ch;
+   cell.dataset.r=r;
+   cell.dataset.c=c;
+   cell.addEventListener("pointerdown",e=>{
+     e.preventDefault();
+     dragging=true;
+     pointerId=e.pointerId;
+     handleSelect(r,c);
+   });
+   cell.addEventListener("pointerenter",e=>{
+     if(dragging && e.pointerId===pointerId) handleDrag(r,c);
+   });
+   rowEl.appendChild(cell);
+   cells[r][c]=cell;
+ });
+ gridEl.appendChild(rowEl);
+});
+
+document.addEventListener("pointerup",()=>dragging=false);
+document.addEventListener("pointermove",e=>{
+ if(!dragging) return;
+ const el=document.elementFromPoint(e.clientX,e.clientY);
+ if(el?.classList.contains("cell")){
+   handleDrag(+el.dataset.r,+el.dataset.c);
+ }
+});
+
+/* ---------------- LOGIC ---------------- */
+function handleSelect(r,c){
+ const last=selection.at(-1);
+ const key=`${r},${c}`;
+
+ if(last && last.key===key){
+   selection.pop();
+ } else if(selection.some(p=>p.key===key)){
+   selection=selection.slice(0,selection.findIndex(p=>p.key===key)+1);
+ } else {
+   selection.push({r,c,key});
+ }
+
+ updateUI();
+}
+
+function handleDrag(r,c){
+ if(!selection.length) handleSelect(r,c);
+ else {
+   const last=selection.at(-1);
+   if(Math.abs(last.r-r)<=1 && Math.abs(last.c-c)<=1){
+     handleSelect(r,c);
+   }
+ }
+}
+
+function updateUI(){
+ document.querySelectorAll(".cell").forEach(c=>c.classList.remove("selected"));
+ selection.forEach(p=>cells[p.r][p.c].classList.add("selected"));
+
+ selectionText.innerHTML = selection.length
+   ? "Current selection: <strong>"+selection.map(p=>gridLetters[p.r][p.c]).join("")+"</strong>"
+   : "Current selection: (none)";
+
+ drawPath();
+}
+
+function drawPath(){
+ const rect=gridEl.getBoundingClientRect();
+ svg.setAttribute("viewBox",`0 0 ${rect.width} ${rect.height}`);
+ const pts=selection.map(p=>{
+   const r=cells[p.r][p.c].getBoundingClientRect();
+   return `${r.left+r.width/2-rect.left},${r.top+r.height/2-rect.top}`;
+ });
+ line.setAttribute("points",pts.join(" "));
+ line.setAttribute("stroke","var(--select-blue)");
+}
+
+/* ---------------- THEME TOGGLE ---------------- */
+const toggle=document.getElementById("themeToggle");
+toggle.onclick=()=>{
+ document.body.classList.toggle("cozy");
+ document.body.classList.toggle("festive");
+ toggle.textContent=document.body.classList.contains("festive")
+  ?"Switch to Cozy Theme"
+  :"Switch to Festive Theme";
+};
+</script>
+
 </body>
 </html>
