@@ -20,22 +20,24 @@
       --sel-fill: var(--xmas-green-fill);
       --sel-line: var(--xmas-green-line);
 
-      /* Responsive cell sizing:
-         Desktop target is 3rem. On small screens, shrink so 6 cols always fit. */
-      --cell: min(3rem, calc((100vw - 3rem) / 6));
+      /* Responsive sizing (prevents grid/border issues on mobile) */
+      --grid-cols: 6;
+      --cell: min(3rem, calc((92vw - 8px) / var(--grid-cols)));
     }
-
-    /* Prevent subtle overflow issues */
-    *, *::before, *::after { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 1.5rem;
+      padding: 1.25rem;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
       transition: background 0.4s ease, color 0.4s ease;
+      overflow-x: hidden;
+    }
+
+    @media (max-width: 420px) {
+      body { padding: 1rem; }
     }
 
     /* THEMES -------------------------------------------------------- */
@@ -49,10 +51,52 @@
       color: #f8f8f8;
     }
 
-    body.festive h1,
-    body.festive p {
-      color: #f8f8f8;
+    body.festive p { color: #f8f8f8; }
+
+    /* NYT-LIKE TITLE PILL ------------------------------------------- */
+    .titlePill {
+      width: min(520px, 92vw);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(0,0,0,0.14);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+      text-align: center;
+      margin: 0.5rem 0 0.75rem;
     }
+
+    .titlePill__kicker {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.45rem 0.75rem;
+      background: rgba(120, 200, 215, 0.55);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      color: #111;
+    }
+
+    .titlePill__title {
+      margin: 0;
+      padding: 0.85rem 1rem 0.95rem;
+      font-size: 2.35rem;
+      line-height: 1.05;
+      color: #111;
+    }
+
+    body.festive .titlePill {
+      background: rgba(10, 18, 14, 0.72);
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    }
+
+    body.festive .titlePill__kicker {
+      background: rgba(120, 200, 215, 0.22);
+      border-bottom-color: rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.92);
+    }
+
+    body.festive .titlePill__title { color: #f8f8f8; }
 
     /* SNOWFALL ------------------------------------------------------ */
     #snow {
@@ -78,9 +122,7 @@
       100% { transform: translateY(110vh) translateX(15px); }
     }
 
-    /* LAYOUT -------------------------------------------------------- */
-    h1 { margin-bottom: 0.25rem; }
-
+    /* CONTROLS ------------------------------------------------------ */
     #themeToggle {
       margin-top: 0.25rem;
       margin-bottom: 0.75rem;
@@ -106,6 +148,7 @@
       transform: translateY(-1px);
     }
 
+    /* GAME LAYOUT --------------------------------------------------- */
     #game {
       display: flex;
       flex-direction: column;
@@ -115,15 +158,12 @@
       max-width: 800px;
       position: relative;
       z-index: 1;
-
-      /* Mobile: center grid + sidebar nicely */
-      align-items: center;
     }
 
     @media (min-width: 700px) {
       #game {
         flex-direction: row;
-        align-items: flex-start; /* keep your desktop layout */
+        align-items: flex-start;
       }
     }
 
@@ -134,13 +174,9 @@
       background: #fff;
       touch-action: none;
       box-shadow: 0 10px 25px rgba(0,0,0,0.18);
-      position: relative; /* overlay */
+      position: relative;
       overflow: hidden;
-
-      /* Ensure grid doesn't stretch and stays centered */
-      width: fit-content;
-      max-width: 100%;
-      margin: 0 auto;
+      max-width: 92vw; /* ensures border never overflows viewport */
     }
 
     body.festive #grid {
@@ -157,15 +193,13 @@
       align-items: center;
       justify-content: center;
 
-      /* Remove visible gridlines without changing geometry */
-      border: 1px solid transparent;
-
+      border: 1px solid transparent; /* no gridlines */
       font-weight: 700;
-      font-size: 1.4rem;
+      font-size: calc(var(--cell) * 0.46);
+
       cursor: pointer;
       user-select: none;
       box-sizing: border-box;
-
       transition: transform 0.08s;
       background: rgba(255,255,255,0.0);
       position: relative;
@@ -173,19 +207,16 @@
 
     body.festive .cell { color: #f2f2f2; }
 
-    .cell .letter {
-      position: relative;
-      z-index: 3;
-    }
+    .cell .letter { position: relative; z-index: 3; }
 
-    /* Circle highlight (NYT-like) */
+    /* Circle highlight */
     .cell::after {
       content: "";
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 2.08rem;
-      height: 2.08rem;
+      width: calc(var(--cell) * 0.70);
+      height: calc(var(--cell) * 0.70);
       transform: translate(-50%, -50%);
       border-radius: 999px;
       background: transparent;
@@ -194,18 +225,16 @@
       transition: background-color 0.12s ease, transform 0.08s ease;
     }
 
-    /* current selection (christmas green) */
     .cell.selected::after { background: var(--sel-fill); }
-
-    /* checked/solved words keep the same circle/connector aesthetic */
     .cell.found-theme::after { background: var(--xmas-green-fill); }
     .cell.found-spanagram::after { background: var(--xmas-red-fill); }
 
-    /* Make found letters pop while preserving visibility */
     .cell.found-theme .letter,
-    .cell.found-spanagram .letter { color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+    .cell.found-spanagram .letter {
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
 
-    /* subtle hover affordance on un-found cells */
     @media (hover: hover) {
       .cell:not(.found-theme):not(.found-spanagram):hover::after { background: rgba(255,255,255,0.10); }
       body.cozy .cell:not(.found-theme):not(.found-spanagram):hover::after { background: rgba(0,0,0,0.05); }
@@ -216,10 +245,10 @@
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 1; /* behind circles, above background */
+      z-index: 1;
     }
 
-    /* Sidebar unchanged ---------------------------------------------- */
+    /* Sidebar -------------------------------------------------------- */
     #sidebar {
       flex: 1;
       padding: 1rem;
@@ -365,9 +394,13 @@
 <body>
   <div id="snow"></div>
 
-  <h1>Gift Puzzle</h1>
+  <div class="titlePill" aria-label="Today's theme header">
+    <div class="titlePill__kicker">TODAY’S THEME</div>
+    <h1 class="titlePill__title">My Gift To You</h1>
+  </div>
+
   <button id="themeToggle">Switch to Festive View</button>
-  <p><strong>Theme: My Gift To You</strong> — Tap or drag across adjacent letters (including diagonals) to form hidden words. Tap "Check selection" to see if you found one.</p>
+  <!-- <p><strong>Theme: My Gift To You</strong></p> -->
 
   <div id="game">
     <div id="grid"></div>
@@ -426,7 +459,7 @@
 
     const gridEl = document.getElementById('grid');
 
-    // Strongly disable touch zoom gestures inside the grid
+    // Strongly disable touch zoom gestures inside the grid (iOS double-tap)
     gridEl.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) e.preventDefault();
     }, { passive: false });
@@ -453,8 +486,7 @@
     let spanagramFound = false;
     let revealShown = false;
 
-    // Track found paths so we can render connectors in correct colors
-    const foundThemePaths = []; // array of { id, path }
+    const foundThemePaths = [];
     let foundSpanPath = null;
 
     // --- SVG PATH OVERLAY -----------------------------------------------------
@@ -476,16 +508,13 @@
       svg.style.width = "100%";
       svg.style.height = "100%";
 
-      // Found paths group (under selection)
       const foundGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
       foundGroup.setAttribute("id", "foundGroup");
       svg.appendChild(foundGroup);
 
-      // Active selection line (top)
       selectionLine = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
       selectionLine.setAttribute("id", "selectionLine");
       selectionLine.setAttribute("fill", "none");
-      selectionLine.setAttribute("stroke-width", "14");
       selectionLine.setAttribute("stroke-linecap", "round");
       selectionLine.setAttribute("stroke-linejoin", "round");
       selectionLine.setAttribute("stroke", lineColor('selection'));
@@ -500,6 +529,13 @@
       return gridRect;
     }
 
+    function getStrokeWidth(gridRect) {
+      // Match NYT-ish thickness relative to cell size
+      if (!cellEls?.[0]?.[0]) return 14;
+      const rect = cellEls[0][0].getBoundingClientRect();
+      return Math.max(10, Math.min(18, rect.width * 0.34));
+    }
+
     function pointsForPath(path, gridRect) {
       return path.map(([r,c]) => {
         const rect = cellEls[r][c].getBoundingClientRect();
@@ -509,16 +545,16 @@
       }).join(" ");
     }
 
-    function renderFoundLines() {
+    function renderFoundLines(strokeW) {
       const foundGroup = svg.querySelector("#foundGroup");
       foundGroup.innerHTML = "";
+
       const gridRect = gridEl.getBoundingClientRect();
 
-      // Theme words (green)
       for (const item of foundThemePaths) {
         const pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
         pl.setAttribute("fill", "none");
-        pl.setAttribute("stroke-width", "14");
+        pl.setAttribute("stroke-width", String(strokeW));
         pl.setAttribute("stroke-linecap", "round");
         pl.setAttribute("stroke-linejoin", "round");
         pl.setAttribute("stroke", lineColor('theme'));
@@ -526,11 +562,10 @@
         foundGroup.appendChild(pl);
       }
 
-      // Spanagram (red)
       if (foundSpanPath) {
         const pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
         pl.setAttribute("fill", "none");
-        pl.setAttribute("stroke-width", "14");
+        pl.setAttribute("stroke-width", String(strokeW));
         pl.setAttribute("stroke-linecap", "round");
         pl.setAttribute("stroke-linejoin", "round");
         pl.setAttribute("stroke", lineColor('span'));
@@ -542,8 +577,11 @@
     function updateOverlay() {
       if (!svg || !selectionLine) return;
       const gridRect = setViewBoxToGrid();
+      const strokeW = getStrokeWidth(gridRect);
 
-      // selection line
+      selectionLine.setAttribute("stroke-width", String(strokeW));
+      selectionLine.setAttribute("stroke", lineColor('selection'));
+
       if (selection.length < 2) {
         selectionLine.setAttribute("points", "");
       } else {
@@ -555,10 +593,8 @@
         }).join(" ");
         selectionLine.setAttribute("points", pts);
       }
-      selectionLine.setAttribute("stroke", lineColor('selection'));
 
-      // found lines
-      renderFoundLines();
+      renderFoundLines(strokeW);
     }
 
     window.addEventListener("resize", updateOverlay);
@@ -615,6 +651,9 @@
 
     // --- GRID RENDER ----------------------------------------------------------
     function buildGrid() {
+      // Ensure CSS knows how many columns we have for responsive sizing
+      document.documentElement.style.setProperty('--grid-cols', String(cols));
+
       for (let r = 0; r < rows; r++) {
         const rowEl = document.createElement('div');
         rowEl.className = 'row';
@@ -644,9 +683,6 @@
       document.addEventListener('pointerup', endDrag);
       document.addEventListener('pointercancel', endDrag);
       document.addEventListener('pointermove', onGlobalPointerMove);
-
-      // After layout exists, overlay sizes correctly
-      requestAnimationFrame(updateOverlay);
     }
 
     // --- SELECTION MANAGEMENT -------------------------------------------------
@@ -855,6 +891,9 @@
 
     checkBtn.addEventListener('click', handleCheck);
     clearBtn.addEventListener('click', () => clearSelection(false));
+
+    // After first layout, ensure overlay lines are correctly positioned
+    requestAnimationFrame(() => updateOverlay());
   </script>
 </body>
 </html>
