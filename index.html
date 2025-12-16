@@ -20,9 +20,9 @@
       --sel-fill: var(--xmas-green-fill);
       --sel-line: var(--xmas-green-line);
 
-      /* Responsive sizing (prevents grid/border issues on mobile) */
+      /* JS will set these precisely */
       --grid-cols: 6;
-      --cell: min(3rem, calc((92vw - 8px) / var(--grid-cols)));
+      --cell: 48px;
     }
 
     body {
@@ -54,9 +54,10 @@
     body.festive p { color: #f8f8f8; }
 
     /* NYT-LIKE TITLE PILL ------------------------------------------- */
+    /* Edit pill size here (width + border-radius + padding) */
     .titlePill {
-      width: min(520px, 92vw);
-      border-radius: 18px;
+      width: min(520px, 92vw); /* <- change this */
+      border-radius: 18px;     /* <- and/or this */
       overflow: hidden;
       background: rgba(255,255,255,0.96);
       border: 1px solid rgba(0,0,0,0.14);
@@ -176,7 +177,7 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.18);
       position: relative;
       overflow: hidden;
-      max-width: 92vw; /* ensures border never overflows viewport */
+      max-width: 92vw; /* safety, JS also enforces exact width */
     }
 
     body.festive #grid {
@@ -400,7 +401,6 @@
   </div>
 
   <button id="themeToggle">Switch to Festive View</button>
-  <!-- <p><strong>Theme: My Gift To You</strong></p> -->
 
   <div id="game">
     <div id="grid"></div>
@@ -489,6 +489,29 @@
     const foundThemePaths = [];
     let foundSpanPath = null;
 
+    // --- PRECISE GRID SIZING (fix uneven fill) -------------------------------
+    function applyGridSizing() {
+      // Keep CSS in sync
+      document.documentElement.style.setProperty('--grid-cols', String(cols));
+
+      // Available width for the grid: 92vw (matches your design language)
+      const available = Math.floor(window.innerWidth * 0.92);
+
+      // Grid has 2px border on each side => 4px total
+      const borderTotal = 4;
+
+      // Cap: desktop “3rem” ~ 48px, but we compute in px for exact fit
+      const maxCellPx = 48;
+
+      // Fit EXACT integer pixels so there is no leftover space per row
+      const cellPx = Math.max(28, Math.min(maxCellPx, Math.floor((available - borderTotal) / cols)));
+
+      // Set exact grid width and exact cell size
+      const gridWidth = (cellPx * cols) + borderTotal;
+      gridEl.style.width = gridWidth + "px";
+      document.documentElement.style.setProperty('--cell', cellPx + "px");
+    }
+
     // --- SVG PATH OVERLAY -----------------------------------------------------
     let svg;
     let selectionLine;
@@ -529,8 +552,7 @@
       return gridRect;
     }
 
-    function getStrokeWidth(gridRect) {
-      // Match NYT-ish thickness relative to cell size
+    function getStrokeWidth() {
       if (!cellEls?.[0]?.[0]) return 14;
       const rect = cellEls[0][0].getBoundingClientRect();
       return Math.max(10, Math.min(18, rect.width * 0.34));
@@ -576,8 +598,9 @@
 
     function updateOverlay() {
       if (!svg || !selectionLine) return;
+
       const gridRect = setViewBoxToGrid();
-      const strokeW = getStrokeWidth(gridRect);
+      const strokeW = getStrokeWidth();
 
       selectionLine.setAttribute("stroke-width", String(strokeW));
       selectionLine.setAttribute("stroke", lineColor('selection'));
@@ -597,7 +620,14 @@
       renderFoundLines(strokeW);
     }
 
-    window.addEventListener("resize", updateOverlay);
+    function onResize() {
+      applyGridSizing();
+      // wait a frame so layout settles before measuring for overlay
+      requestAnimationFrame(() => updateOverlay());
+    }
+
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
 
     // --- UTILS ----------------------------------------------------------------
     function coordKey(r, c) { return `${r},${c}`; }
@@ -651,8 +681,7 @@
 
     // --- GRID RENDER ----------------------------------------------------------
     function buildGrid() {
-      // Ensure CSS knows how many columns we have for responsive sizing
-      document.documentElement.style.setProperty('--grid-cols', String(cols));
+      gridEl.innerHTML = ""; // safe rebuild
 
       for (let r = 0; r < rows; r++) {
         const rowEl = document.createElement('div');
@@ -882,8 +911,15 @@
 
     // --- INIT -----------------------------------------------------------------
     createSnowflakes(70);
+
+    // 1) Size grid precisely BEFORE building (prevents uneven fill)
+    applyGridSizing();
+
+    // 2) Build + overlay
     buildGrid();
     initOverlay();
+
+    // 3) Theme + initial UI
     currentTheme = 'cozy';
     applyTheme();
     updateSelectionView();
@@ -892,7 +928,7 @@
     checkBtn.addEventListener('click', handleCheck);
     clearBtn.addEventListener('click', () => clearSelection(false));
 
-    // After first layout, ensure overlay lines are correctly positioned
+    // 4) After first layout, align overlay lines
     requestAnimationFrame(() => updateOverlay());
   </script>
 </body>
