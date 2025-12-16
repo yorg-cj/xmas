@@ -168,8 +168,10 @@
       }
     }
 
-    #grid {
-      display: inline-block;
+    #grid{
+      display: block;
+      margin: 0 auto;          /* centers the grid */
+      width: min(var(--grid-max), 92vw);
       border: 2px solid #333;
       border-radius: 8px;
       background: #fff;
@@ -177,7 +179,6 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.18);
       position: relative;
       overflow: hidden;
-      max-width: 92vw; /* safety, JS also enforces exact width */
     }
 
     body.festive #grid {
